@@ -1,0 +1,554 @@
+<html>
+<head>
+  <base href="https://example.com">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MIDI to Note Sequences Converter</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, system-ui, sans-serif;
+      background-color: #111;
+      color: #eee;
+      margin: 0;
+      padding: 40px;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background-color: #1a1a1a;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 4px 32px rgba(0,0,0,0.2);
+    }
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 2rem;
+      background: linear-gradient(45deg, #60a5fa, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-top: 2rem;
+      margin-bottom: 1rem;
+      color: #60a5fa;
+    }
+    .file-input {
+      margin-bottom: 1.5rem;
+    }
+    input[type="file"] {
+      background: #222;
+      padding: 1rem;
+      border-radius: 8px;
+      border: 1px solid #333;
+      width: 100%;
+      color: #eee;
+    }
+    .key-selector {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .key-selector select, 
+    .key-selector input {
+      width: 100%;
+      padding: 0.75rem;
+      background: #222;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #eee;
+      font-size: 0.9rem;
+    }
+    .file-list {
+      background: #222;
+      border-radius: 8px;
+      padding: 0.5rem;
+      margin: 1rem 0;
+    }
+    .file-list-item {
+      background: #2a2a2a;
+      padding: 0.75rem;
+      margin: 0.5rem;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .drag-handle {
+      color: #666;
+      cursor: grab;
+    }
+    button {
+      background: #60a5fa;
+      color: #fff;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    button:hover {
+      background: #3b82f6;
+      transform: translateY(-1px);
+    }
+    .copy-btn {
+      background: #34d399;
+    }
+    .copy-btn:hover {
+      background: #10b981;
+    }
+    .output {
+      background: #222;
+      padding: 1.5rem;
+      border-radius: 8px;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 0.9rem;
+      line-height: 1.4;
+      overflow-x: auto;
+    }
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      background: #222;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 1rem;
+      color: #eee;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 0.9rem;
+      resize: vertical;
+    }
+    textarea[readonly] {
+      opacity: 0.8;
+      cursor: default;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>MIDI to Note Sequences Converter</h1>
+    <h2>MIDI File Input</h2>
+    <div class="file-input">
+      <input type="file" id="midi-file" accept=".mid,.midi" multiple>
+    </div>
+    <div class="key-selector">
+      <div>
+        <label for="note-select">Select Root Note:</label>
+        <select id="note-select">
+          <option value="C">C</option>
+          <option value="C#">C#</option>
+          <option value="D">D</option>
+          <option value="D#">D#</option>
+          <option value="E">E</option>
+          <option value="F">F</option>
+          <option value="F#">F#</option>
+          <option value="G">G</option>
+          <option value="G#">G#</option>
+          <option value="A">A</option>
+          <option value="A#">A#</option>
+          <option value="B">B</option>
+        </select>
+      </div>
+      <div>
+        <label for="scale-select">Select Scale:</label>
+        <select id="scale-select">
+          <option value="Major">Major</option>
+          <option value="Minor">Minor</option>
+          <option value="Chromatic">Chromatic</option>
+        </select>
+      </div>
+      <div>
+        <label for="transpose">Transpose:</label>
+        <input type="number" id="transpose" value="0" min="-12" max="12">
+      </div>
+    </div>
+    <div class="file-list" id="file-list"></div>
+    <button id="convert-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 9l-7 7-7-7"/>
+      </svg>
+      Convert to Note Sequences
+    </button>
+    <button id="reset-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 12h18M3 6h18M3 18h18"/>
+      </svg>
+      Reset
+    </button>
+    <button id="copy-btn" class="copy-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </svg>
+      Copy Note Sequence
+    </button>
+    <h2>Note Sequence Output</h2>
+    <div class="output">
+      <pre id="xml-output"></pre>
+    </div>
+    <div class="chord-transposer">
+      <h2>Chord Transposer</h2>
+      <textarea id="chord-input" placeholder="Enter chords here..."></textarea>
+      <textarea id="chord-output" placeholder="Transposed chords will appear here..." readonly></textarea>
+      <div class="key-selector">
+        <div>
+          <label for="chord-key-select">Select Key:</label>
+          <select id="chord-key-select">
+            <option value="C">C</option>
+            <option value="C#">C#</option>
+            <option value="D">D</option>
+            <option value="D#">D#</option>
+            <option value="E">E</option>
+            <option value="F">F</option>
+            <option value="F#">F#</option>
+            <option value="G">G</option>
+            <option value="G#">G#</option>
+            <option value="A">A</option>
+            <option value="A#">A#</option>
+            <option value="B">B</option>
+          </select>
+        </div>
+        <button id="transpose-chords-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 9l-7 7-7-7"/>
+          </svg>
+          Transpose Chords
+        </button>
+        <button id="convert-chords-to-xml-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12h18M3 6h18M3 18h18"/>
+          </svg>
+          Convert to XML
+        </button>
+      </div>
+    </div>
+  </div>
+  <script>const NOTE_MAP = {
+  'C': 60,
+  'C#': 61,
+  'Db': 61,
+  'D': 62,
+  'D#': 63,
+  'Eb': 63,
+  'E': 64,
+  'F': 65,
+  'F#': 66,
+  'Gb': 66,
+  'G': 67,
+  'G#': 68,
+  'Ab': 68,
+  'A': 69,
+  'A#': 70,
+  'Bb': 70,
+  'B': 71
+};
+const CHORD_NOTE_OFFSETS = {
+  '': [0, 4, 7],
+  'm': [0, 3, 7],
+  'dim': [0, 3, 6],
+  'aug': [0, 4, 8],
+  '7': [0, 4, 7, 10],
+  'maj7': [0, 4, 7, 11],
+  'm7': [0, 3, 7, 10],
+  'dim7': [0, 3, 6, 9],
+  'aug7': [0, 4, 8, 10]
+};
+const CHORDS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+function modifyNoteSequence(sequence, chordProgression) {
+  const modifiedSequence = {
+    ...sequence
+  };
+  const chords = chordProgression.split(/\s+/).filter(c => c.trim());
+  modifiedSequence.notes = sequence.notes.map((note, i) => {
+    const chordIndex = Math.floor(i / (sequence.notes.length / chords.length));
+    const chord = chords[chordIndex];
+    const chordRoot = chord.match(/^[A-G][#b]?/)[0];
+    const baseNote = NOTE_MAP[chordRoot];
+    const noteOffset = note.note - NOTE_MAP[sequence.key.split(' ')[0]];
+    return {
+      ...note,
+      note: baseNote + noteOffset
+    };
+  });
+  return modifiedSequence;
+}
+function generateModifiedXml(sequences, chordProgression) {
+  let xml = '<noteSequences>\n';
+  sequences.forEach(sequence => {
+    const modified = modifyNoteSequence(sequence, chordProgression);
+    xml += `  <sequence name="${modified.name}" length="${modified.length}" rate="${modified.rate}" key="${modified.key}">\n`;
+    modified.notes.forEach(note => {
+      xml += `    <note position="${note.position}" velocity="${note.velocity}" note="${note.note}" length="${note.length}"/>\n`;
+    });
+    xml += '  </sequence>\n';
+  });
+  xml += '</noteSequences>';
+  return xml;
+}
+const transposeChord = (chord, steps) => {
+  const normalizeChord = ch => {
+    const replacements = {
+      'Db': 'C#',
+      'Eb': 'D#',
+      'Gb': 'F#',
+      'Ab': 'G#',
+      'Bb': 'A#'
+    };
+    return replacements[ch] || ch;
+  };
+  const normalizedChord = normalizeChord(chord);
+  const index = CHORDS.indexOf(normalizedChord);
+  if (index === -1) return chord;
+  return CHORDS[(index + steps + 12) % 12];
+};
+const transposeText = (text, steps) => {
+  return text.replace(/([A-G][#b]?)(?:(maj7|7|dim|aug|sus4|sus2|m|dim7|m7|aug7))?(?:\/([A-G][#b]?))?/g, (match, chord, suffix = '', bass = '') => {
+    const transposedChord = transposeChord(chord, steps);
+    const transposedBass = bass ? '/' + transposeChord(bass, steps) : '';
+    return transposedChord + suffix + transposedBass;
+  });
+};
+document.getElementById('transpose-chords-btn').addEventListener('click', () => {
+  const inputText = document.getElementById('chord-input').value;
+  const selectedKey = document.getElementById('chord-key-select').value;
+  const currentIndex = CHORDS.indexOf(selectedKey);
+  const transposedText = transposeText(inputText, currentIndex);
+  document.getElementById('chord-output').value = transposedText;
+});
+document.getElementById('midi-file').addEventListener('change', function () {
+  const fileList = document.getElementById('file-list');
+  fileList.innerHTML = '';
+  Array.from(this.files).forEach(file => {
+    const listItem = document.createElement('div');
+    listItem.className = 'file-list-item';
+    listItem.draggable = true;
+    listItem.innerHTML = `
+              <div class="drag-handle">☰</div>
+              ${file.name}
+            `;
+    fileList.appendChild(listItem);
+  });
+  setupDragAndDrop();
+});
+function setupDragAndDrop() {
+  const fileList = document.getElementById('file-list');
+  let dragSrcEl = null;
+  function handleDragStart(e) {
+    dragSrcEl = this;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', this.innerHTML);
+  }
+  function handleDragOver(e) {
+    if (e.preventDefault) {
+      e.preventDefault();
+    }
+    e.dataTransfer.dropEffect = 'move';
+    return false;
+  }
+  function handleDragEnter(e) {
+    this.classList.add('over');
+  }
+  function handleDragLeave(e) {
+    this.classList.remove('over');
+  }
+  function handleDrop(e) {
+    if (e.stopPropagation) {
+      e.stopPropagation();
+    }
+    if (dragSrcEl !== this) {
+      dragSrcEl.innerHTML = this.innerHTML;
+      this.innerHTML = e.dataTransfer.getData('text/html');
+    }
+    return false;
+  }
+  function handleDragEnd(e) {
+    Array.from(fileList.children).forEach(item => {
+      item.classList.remove('over');
+    });
+  }
+  Array.from(fileList.children).forEach(item => {
+    item.addEventListener('dragstart', handleDragStart, false);
+    item.addEventListener('dragenter', handleDragEnter, false);
+    item.addEventListener('dragover', handleDragOver, false);
+    item.addEventListener('dragleave', handleDragLeave, false);
+    item.addEventListener('drop', handleDrop, false);
+    item.addEventListener('dragend', handleDragEnd, false);
+  });
+}
+document.getElementById('convert-btn').addEventListener('click', () => {
+  const fileInput = document.getElementById('midi-file');
+  if (fileInput.files.length === 0) {
+    alert('Please select one or more MIDI files.');
+    return;
+  }
+  const note = document.getElementById('note-select').value;
+  const scale = document.getElementById('scale-select').value;
+  const transpose = parseInt(document.getElementById('transpose').value, 10);
+  const key = applyTransposeToKey(note, scale, transpose);
+  let allXmlOutput = '<noteSequences>\n';
+  const files = Array.from(fileInput.files);
+  let filesProcessed = 0;
+  files.forEach((file, index) => {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const arrayBuffer = e.target.result;
+      const midiData = new Uint8Array(arrayBuffer);
+      const xmlOutput = midiToNoteSequences(midiData, file.name.replace('.mid', '').replace('.midi', ''), key, transpose);
+      allXmlOutput += xmlOutput.split('<noteSequences>')[1].split('</noteSequences>')[0];
+      filesProcessed++;
+      if (filesProcessed === files.length) {
+        allXmlOutput += '</noteSequences>';
+        document.getElementById('xml-output').textContent = allXmlOutput.replace(/\n\s*\n/g, '\n');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+});
+document.getElementById('reset-btn').addEventListener('click', () => {
+  document.getElementById('xml-input').value = '';
+  document.getElementById('parsed-xml-output').textContent = '';
+});
+function applyTransposeToKey(note, scale, transpose) {
+  const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const noteIndex = notes.indexOf(note);
+  const newNoteIndex = (noteIndex + transpose + 12) % 12;
+  const newNote = notes[newNoteIndex];
+  return `${newNote} ${scale}`;
+}
+function midiToNoteSequences(midiData, sequenceName, key, transpose) {
+  const midiHeader = new DataView(midiData.buffer, 0, 14);
+  const formatType = midiHeader.getUint16(8);
+  const numTracks = midiHeader.getUint16(10);
+  const timeDivision = midiHeader.getUint16(12);
+  let sequences = [];
+  let offset = 14;
+  for (let track = 0; track < numTracks; track++) {
+    const trackHeader = new DataView(midiData.buffer, offset, 8);
+    const trackLength = trackHeader.getUint32(4);
+    offset += 8;
+    const trackEnd = offset + trackLength;
+    let position = 0;
+    let notes = [];
+    while (offset < trackEnd) {
+      const deltaTime = readVariableLengthQuantity(midiData, offset);
+      offset += deltaTime.length;
+      const eventTypeByte = midiData[offset];
+      offset++;
+      if ((eventTypeByte & 0xF0) === 0x90) {
+        const note = midiData[offset];
+        offset++;
+        const velocity = midiData[offset];
+        offset++;
+        notes.push({
+          position: position,
+          note: note + transpose,
+          velocity: velocity / 127.0,
+          length: 1
+        });
+        position += 1;
+      } else if (eventTypeByte === 0xFF) {
+        const metaType = midiData[offset];
+        offset++;
+        const length = readVariableLengthQuantity(midiData, offset);
+        offset += length.length;
+        offset += length.value;
+      } else {
+        offset += 2;
+      }
+    }
+    sequences.push({
+      name: sequenceName || 'Sequence ' + (track + 1),
+      length: position,
+      rate: 4,
+      notes: notes,
+      key: key
+    });
+  }
+  let xml = '<noteSequences>\n';
+  sequences.forEach(sequence => {
+    xml += `  <sequence name="${sequence.name}" length="${sequence.length}" rate="${sequence.rate}" key="${sequence.key}">\n`;
+    sequence.notes.forEach(note => {
+      xml += `    <note position="${note.position}" velocity="${note.velocity}" note="${note.note}" length="${note.length}"/>\n`;
+    });
+    xml += `  </sequence>\n`;
+  });
+  xml += '</noteSequences>';
+  return xml;
+}
+function readVariableLengthQuantity(data, offset) {
+  let value = 0;
+  let bytesRead = 0;
+  while (true) {
+    const byte = data[offset + bytesRead];
+    value = value << 7 | byte & 0x7F;
+    bytesRead++;
+    if ((byte & 0x80) === 0) break;
+  }
+  return {
+    value,
+    length: bytesRead
+  };
+}
+const convertChordsToXML = chords => {
+  const chordArray = chords.split(/\s+/).filter(chord => chord.trim() !== '');
+  let xml = '<noteSequences>\n';
+  chordArray.forEach((chord, index) => {
+    const match = chord.match(/([A-G][#b]?)(?:(maj7|7|dim|aug|sus4|sus2|m|dim7|m7|aug7))?(?:\/([A-G][#b]?))?/);
+    if (!match) return;
+    const [_, root, type = '', bass = ''] = match;
+    const baseNote = NOTE_MAP[root];
+    if (typeof baseNote === 'undefined') {
+      console.error(`Invalid root note: ${root}`);
+      return;
+    }
+    const offsets = CHORD_NOTE_OFFSETS[type] || CHORD_NOTE_OFFSETS[''];
+    const chordName = bass ? `${root}${type}/${bass}` : `${root}${type}`;
+    xml += `  <sequence name="${chordName}" length="16" rate="4" key="${chordName}">\n`;
+    offsets.forEach((offset, pos) => {
+      for (let octave = 0; octave < 2; octave++) {
+        const velocity = 0.4 + Math.random() * 0.4;
+        const note = baseNote + offset + octave * 12;
+        const position = pos + octave * offsets.length;
+        xml += `    <note position="${position}" velocity="${velocity.toFixed(2)}" note="${note}" length="1"/>\n`;
+      }
+    });
+    xml += `  </sequence>\n`;
+  });
+  xml += '</noteSequences>';
+  return xml;
+};
+document.getElementById('convert-chords-to-xml-btn').addEventListener('click', () => {
+  const transposedChords = document.getElementById('chord-output').value;
+  if (!transposedChords) {
+    alert('Please transpose chords first!');
+    return;
+  }
+  const xmlOutput = convertChordsToXML(transposedChords);
+  document.getElementById('chord-xml-output').textContent = xmlOutput;
+});
+document.getElementById('copy-btn').addEventListener('click', () => {
+  const outputText = document.getElementById('xml-output').textContent;
+  if (!outputText) {
+    alert('No note sequence to copy!');
+    return;
+  }
+  navigator.clipboard.writeText(outputText).then(() => alert('Note sequence copied to clipboard!')).catch(() => alert('Failed to copy note sequence to clipboard'));
+});
+const sectionNames = {
+  midiInput: "MIDI File Input",
+  keySelector: "Key Selection",
+  fileList: "Selected Files",
+  noteSequence: "Note Sequence Output",
+  chordTransposer: "Chord Transposer"
+};</script>
+</body>
+</html>
